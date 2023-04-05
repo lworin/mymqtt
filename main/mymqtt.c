@@ -58,7 +58,7 @@ void tcp_socket_init(char *host_ip, int port)
  * @param port Porta de aplicação MQTT
  * @return int (-1: falha | 0 ou mais: bytes enviados com sucesso)
  */
-int mqtt_connect(char *host_ip, int port)
+int mymqtt_connect(char *host_ip, int port)
 {
     char msgc[100];    // Buffer de envio
     char rx_buffer[8]; // Buffer de recebimento
@@ -118,7 +118,7 @@ int mqtt_connect(char *host_ip, int port)
  * @brief Encerra conexão com broker MQTT e fecha conexão TCP
  *
  */
-void mqtt_disconnect(void)
+void mymqtt_disconnect(void)
 {
     char msgc[2]; // Buffer de envio
 
@@ -143,7 +143,7 @@ void mqtt_disconnect(void)
  * @param size Tamanho do conteúdo
  * @return int (-1: falha | 0 ou mais: bytes enviados com sucesso)
  */
-int mqtt_publish(char *topic, void *payload, uint32_t size)
+int mymqtt_publish(char *topic, void *payload, uint32_t size)
 {
     char msgc[100];      // Buffer de envio
     uint32_t msglen = 4; // Tamanho total da mensagem (iniciando com 4 bytes)

@@ -17,8 +17,9 @@
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 
-int mqtt_connect(char *host_ip, int port);
-void mqtt_disconnect(void);
-int mqtt_publish(char *topic, void * payload, uint32_t size);
+/* Protótipos */
+int mymqtt_connect(char *host_ip, int port);
+void mymqtt_disconnect(void);
+int mymqtt_publish(char *topic, void * payload, uint32_t size);
 
 #endif

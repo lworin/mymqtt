@@ -42,7 +42,7 @@ static void mqtt_task(void *pvParameters)
     while (1)
     {
 
-        ret = mqtt_connect(HOST_IP_ADDR, PORT); // Realiza o connect MQTT
+        ret = mymqtt_connect(HOST_IP_ADDR, PORT); // Realiza o connect MQTT
         if (ret < 0)
         {
             ESP_LOGE(TAG, "MQTT connect failed, return: %d", ret);
@@ -55,7 +55,7 @@ static void mqtt_task(void *pvParameters)
 
         while (1)
         {
-            ret = mqtt_publish("TEMP", "12345", sizeof("12345"));
+            ret = mymqtt_publish("TEMP", "12345", sizeof("12345"));
             if (ret < 0)
             {
                 ESP_LOGE(TAG, "MQTT publish failed, return: %d", ret);
@@ -68,7 +68,7 @@ static void mqtt_task(void *pvParameters)
             vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
 
-        mqtt_disconnect(); // Realiza o disconnect MQTT
+        mymqtt_disconnect(); // Realiza o disconnect MQTT
     }
 
     vTaskDelete(NULL);
