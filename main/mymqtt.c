@@ -177,27 +177,77 @@ int mymqtt_publish(char *topic, void *payload, uint32_t size)
     }
 }
 
-int mymqtt_subscribe()
+/**
+ * @brief Realiza a inscrição no tópico
+ *
+ * @param topic Nome do tópico
+ * @return int (-1: falha | 0 ou mais: bytes enviados com sucesso)
+ */
+int mymqtt_subscribe(char *topic)
 {
-    char msgc[100]; // Buffer de envio
-    char rx_buffer[8]; // Buffer de recebimento
+    char payload[100];                // Buffer contendo Tamanho do tópico + Nome do tópico + QoS
+    char msgc[100];                   // Buffer de envio
+    char rx_buffer[8];                // Buffer de recebimento
+    uint32_t headlen = 0, paylen = 0; // Controle do comprimento da mensagem
     int ret, len;
 
-    msgc[0] = 0X82; // CONTROL HEADER		8 = Command Type (SUBSCRIBE) | 2 = Control Flags
-    msgc[1] = 0X08; // REMAINING LENGTH		0x08 = 8 bytes
-    msgc[2] = 0X00; // VARIABLE HEADER		Packet ID MSB
-    msgc[3] = 0X01; // VARIABLE HEADER		Packet ID LSB (0001 = 1)
-    msgc[4] = 0X00; // PAYLOAD				Length MSB
-    msgc[5] = 0X03; // PAYLOAD				Length LSB
-    msgc[6] = 'M';  // PAYLOAD				Topic name byte 1
-    msgc[7] = 'P';  // PAYLOAD				Topic name byte 2
-    msgc[8] = 'B';  // PAYLOAD				Topic name byte 3
-    msgc[9] = 0x00; // PAYLOAD				Requested QoS
+    /* PAYLOAD: Topic name length */
+    payload[0] = (uint8_t)(strlen(topic) >> 8); // Topic name length MSB
+    payload[1] = (uint8_t)(strlen(topic));      // Topic name length LSB
+    paylen +=2;
+
+    /* PAYLOAD: Copia o nome do tópico para a mensagem */
+    strncpy(&payload[paylen], topic, strlen(topic));
+    paylen += strlen(topic);
+
+    /* PAYLOAD: QoS */
+    payload[paylen] = 0x00; // PAYLOAD				Requested QoS
+    paylen++;
+
+    /* CONTROL HEADER: 8 = Command Type (SUBSCRIBE) | 2 = Control Flags */
+    msgc[0] = 0X82;
+    headlen++;
+
+    /* REMAINING LENGTH: Variable header + tamanho do payload */
+    if (paylen < 0x7F)
+    {
+        msgc[1] = 2 + paylen;
+        headlen++;
+    }
+    else if (paylen < 0x7FFF)
+    {
+        msgc[1] = (uint8_t)((2 + paylen) >> 8);
+        msgc[2] = (uint8_t)(2 + paylen);
+        headlen += 2;
+    }
+    else if (paylen < 0x7FFFFF)
+    {
+        msgc[1] = (uint8_t)((2 + paylen) >> 16);
+        msgc[2] = (uint8_t)((2 + paylen) >> 8);
+        msgc[3] = (uint8_t)(2 + paylen);
+        headlen += 3;
+    }
+    else
+    {
+        msgc[1] = (uint8_t)((2 + paylen) >> 24);
+        msgc[2] = (uint8_t)((2 + paylen) >> 16);
+        msgc[3] = (uint8_t)((2 + paylen) >> 8);
+        msgc[4] = (uint8_t)(2 + paylen);
+        headlen += 4;
+    }
+
+    /* VARIABLE HEADER: Packet ID */
+    msgc[headlen + 0] = 0X00; // VARIABLE HEADER		Packet ID MSB
+    msgc[headlen + 1] = 0X01; // VARIABLE HEADER		Packet ID LSB (0001 = 1)
+    headlen += 2;
+
+    /* FULL MESSAGE */
+    memcpy(&msgc[headlen], payload, paylen);
 
     /* Faz a inscrição */
     ESP_LOGI(TAG, "Subscribing");
-    ESP_LOG_BUFFER_HEX(TAG, msgc, 10);
-    ret = send(sock, msgc, 10, 0);
+    ESP_LOG_BUFFER_HEX(TAG, msgc, headlen + paylen);
+    ret = send(sock, msgc, headlen + paylen, 0);
     if (ret < 0)
     {
         ESP_LOGE(TAG, "send failed: errno %d", errno);
@@ -220,7 +270,7 @@ int mymqtt_subscribe()
     }
 }
 
-int mymqtt_listen(char * rx_buffer, int buffer_size)
+int mymqtt_listen(char *rx_buffer, int buffer_size)
 {
     int len;
 

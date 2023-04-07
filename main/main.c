@@ -98,7 +98,7 @@ static void mqtt_task2(void *pvParameters)
             ESP_LOGI(TAG, "MQTT connect success, return: %d", ret);
         }
 
-        ret = mymqtt_subscribe("TEMP");
+        ret = mymqtt_subscribe("ESPTEST");
         if (ret < 0)
         {
             ESP_LOGE(TAG, "MQTT subscribe failed, return: %d", ret);
