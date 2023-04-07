@@ -146,6 +146,6 @@ void app_main(void)
      */
     ESP_ERROR_CHECK(example_connect());
 
-    xTaskCreate(mqtt_task1, "mqtt_task1", 4096, NULL, 5, NULL);
-    //xTaskCreate(mqtt_task2, "mqtt_task2", 4096, NULL, 5, NULL);
+    //xTaskCreate(mqtt_task1, "mqtt_task1", 4096, NULL, 5, NULL);
+    xTaskCreate(mqtt_task2, "mqtt_task2", 4096, NULL, 5, NULL);
 }
