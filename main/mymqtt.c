@@ -176,3 +176,64 @@ int mymqtt_publish(char *topic, void *payload, uint32_t size)
         return ret;
     }
 }
+
+int mymqtt_subscribe()
+{
+    char msgc[100]; // Buffer de envio
+    char rx_buffer[8]; // Buffer de recebimento
+    int ret, len;
+
+    msgc[0] = 0X82; // CONTROL HEADER		8 = Command Type (SUBSCRIBE) | 2 = Control Flags
+    msgc[1] = 0X08; // REMAINING LENGTH		0x08 = 8 bytes
+    msgc[2] = 0X00; // VARIABLE HEADER		Packet ID MSB
+    msgc[3] = 0X01; // VARIABLE HEADER		Packet ID LSB (0001 = 1)
+    msgc[4] = 0X00; // PAYLOAD				Length MSB
+    msgc[5] = 0X03; // PAYLOAD				Length LSB
+    msgc[6] = 'M';  // PAYLOAD				Topic name byte 1
+    msgc[7] = 'P';  // PAYLOAD				Topic name byte 2
+    msgc[8] = 'B';  // PAYLOAD				Topic name byte 3
+    msgc[9] = 0x00; // PAYLOAD				Requested QoS
+
+    /* Faz a inscrição */
+    ESP_LOGI(TAG, "Subscribing");
+    ESP_LOG_BUFFER_HEX(TAG, msgc, 10);
+    ret = send(sock, msgc, 10, 0);
+    if (ret < 0)
+    {
+        ESP_LOGE(TAG, "send failed: errno %d", errno);
+        return -1;
+    }
+
+    /* Recepção do SUBACK */
+    len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+    if (len < 0)
+    {
+        ESP_LOGE(TAG, "recv failed: errno %d", errno);
+        return -1;
+    }
+    else
+    {
+        rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+        ESP_LOGI(TAG, "Received %d bytes", len);
+        ESP_LOG_BUFFER_HEX(TAG, rx_buffer, len);
+        return ret;
+    }
+}
+
+int mymqtt_listen(char * rx_buffer, int buffer_size)
+{
+    int len;
+
+    /* Recepção de dados */
+    len = recv(sock, rx_buffer, buffer_size, 0);
+    if (len < 0)
+    {
+        ESP_LOGE(TAG, "recv failed: errno %d", errno);
+        return -1;
+    }
+    else
+    {
+        rx_buffer[len] = 0; // Insere um NULL no fim do pacote
+        return len;
+    }
+}

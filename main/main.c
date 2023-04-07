@@ -35,7 +35,7 @@ static const char *TAG = "main";
  *
  * @param pvParameters
  */
-static void mqtt_task(void *pvParameters)
+static void mqtt_task1(void *pvParameters)
 {
     int ret;
 
@@ -74,6 +74,66 @@ static void mqtt_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
+/**
+ * @brief Task para gerenciar o MQTT
+ *
+ * @param pvParameters
+ */
+static void mqtt_task2(void *pvParameters)
+{
+    int ret, len;
+    char rx_buffer[100]; // Buffer de recebimento
+
+    while (1)
+    {
+
+        ret = mymqtt_connect(HOST_IP_ADDR, PORT); // Realiza o connect MQTT
+        if (ret < 0)
+        {
+            ESP_LOGE(TAG, "MQTT connect failed, return: %d", ret);
+            break;
+        }
+        else
+        {
+            ESP_LOGI(TAG, "MQTT connect success, return: %d", ret);
+        }
+
+        ret = mymqtt_subscribe("TEMP");
+        if (ret < 0)
+        {
+            ESP_LOGE(TAG, "MQTT subscribe failed, return: %d", ret);
+            break;
+        }
+        else
+        {
+            ESP_LOGI(TAG, "MQTT subscribe success, return: %d", ret);
+        }
+
+        while (1)
+        {
+            ESP_LOGI(TAG, "Waiting for packets");
+            len = mymqtt_listen(rx_buffer, sizeof(rx_buffer));
+            if(len < 0)
+            {
+                ESP_LOGI(TAG, "Failed");
+                break;
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Received %d bytes", len);
+                ESP_LOG_BUFFER_HEX(TAG, rx_buffer, len);
+            }
+
+            vTaskDelay(10/portTICK_PERIOD_MS);
+        }
+
+        mymqtt_disconnect(); // Realiza o disconnect MQTT
+        vTaskDelay(5000/portTICK_PERIOD_MS);
+    }
+
+    vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -86,5 +146,6 @@ void app_main(void)
      */
     ESP_ERROR_CHECK(example_connect());
 
-    xTaskCreate(mqtt_task, "mqtt_task", 4096, NULL, 5, NULL);
+    //xTaskCreate(mqtt_task1, "mqtt_task1", 4096, NULL, 5, NULL);
+    xTaskCreate(mqtt_task2, "mqtt_task2", 4096, NULL, 5, NULL);
 }
