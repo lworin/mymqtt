@@ -53,7 +53,7 @@ static void mqtt_task1(void *pvParameters)
             ESP_LOGI(TAG, "MQTT connect success, return: %d", ret);
         }
 
-        while (1)
+        while (1) // Loop para publicar os dados
         {
             ret = mymqtt_publish("TEMP", "12345", sizeof("12345"));
             if (ret < 0)
@@ -98,7 +98,7 @@ static void mqtt_task2(void *pvParameters)
             ESP_LOGI(TAG, "MQTT connect success, return: %d", ret);
         }
 
-        ret = mymqtt_subscribe("ESPTEST");
+        ret = mymqtt_subscribe("ESPTEST"); // Realiza inscrição no tópico
         if (ret < 0)
         {
             ESP_LOGE(TAG, "MQTT subscribe failed, return: %d", ret);
@@ -109,7 +109,7 @@ static void mqtt_task2(void *pvParameters)
             ESP_LOGI(TAG, "MQTT subscribe success, return: %d", ret);
         }
 
-        while (1)
+        while (1) // Loop para receber os dados
         {
             ESP_LOGI(TAG, "Waiting for packets");
             len = mymqtt_listen(rx_buffer, sizeof(rx_buffer));
@@ -146,6 +146,6 @@ void app_main(void)
      */
     ESP_ERROR_CHECK(example_connect());
 
-    //xTaskCreate(mqtt_task1, "mqtt_task1", 4096, NULL, 5, NULL);
-    xTaskCreate(mqtt_task2, "mqtt_task2", 4096, NULL, 5, NULL);
+    xTaskCreate(mqtt_task1, "mqtt_task1", 4096, NULL, 5, NULL);
+    //xTaskCreate(mqtt_task2, "mqtt_task2", 4096, NULL, 5, NULL);
 }
