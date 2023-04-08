@@ -31,13 +31,13 @@
 static const char *TAG = "main";
 
 /**
- * @brief Task para gerenciar o MQTT
+ * @brief Task para Publicar via MQTT
  *
  * @param pvParameters
  */
-static void mqtt_task1(void *pvParameters)
+static void mqtt_pub_task(void *pvParameters)
 {
-    int ret;
+    int ret, count = 0;
 
     while (1)
     {
@@ -55,7 +55,7 @@ static void mqtt_task1(void *pvParameters)
 
         while (1) // Loop para publicar os dados
         {
-            ret = mymqtt_publish("TEMP", "12345", sizeof("12345"));
+            ret = mymqtt_publish("COUNT", &count, sizeof(count));
             if (ret < 0)
             {
                 ESP_LOGE(TAG, "MQTT publish failed, return: %d", ret);
@@ -65,7 +65,13 @@ static void mqtt_task1(void *pvParameters)
             {
                 ESP_LOGI(TAG, "MQTT publish success, return: %d", ret);
             }
-            vTaskDelay(5000 / portTICK_PERIOD_MS);
+            count++;
+            vTaskDelay(3000 / portTICK_PERIOD_MS);
+            
+            if(count > 10) // Encerra o teste
+            {
+                break;
+            }
         }
 
         mymqtt_disconnect(); // Realiza o disconnect MQTT
@@ -79,14 +85,13 @@ static void mqtt_task1(void *pvParameters)
  *
  * @param pvParameters
  */
-static void mqtt_task2(void *pvParameters)
+static void mqtt_sub_task(void *pvParameters)
 {
-    int ret, len;
+    int ret, len, count = 0;
     char rx_buffer[100]; // Buffer de recebimento
 
     while (1)
     {
-
         ret = mymqtt_connect(HOST_IP_ADDR, PORT); // Realiza o connect MQTT
         if (ret < 0)
         {
@@ -109,26 +114,44 @@ static void mqtt_task2(void *pvParameters)
             ESP_LOGI(TAG, "MQTT subscribe success, return: %d", ret);
         }
 
-        while (1) // Loop para receber os dados
-        {
-            ESP_LOGI(TAG, "Waiting for packets");
-            len = mymqtt_listen(rx_buffer, sizeof(rx_buffer));
-            if(len < 0)
-            {
-                ESP_LOGI(TAG, "Failed");
-                break;
-            }
-            else
-            {
-                ESP_LOGI(TAG, "Received %d bytes", len);
-                ESP_LOG_BUFFER_HEX(TAG, rx_buffer, len);
-            }
+        // while (1) // Loop para receber os dados
+        // {
+        //     ESP_LOGI(TAG, "Waiting for packets");
+        //     len = mymqtt_listen(rx_buffer, sizeof(rx_buffer));
+        //     count++;
+        //     if(len < 0)
+        //     {
+        //         ESP_LOGI(TAG, "Failed");
+        //         break;
+        //     }
+        //     else
+        //     {
+        //         ESP_LOGI(TAG, "Received %d bytes", len);
+        //         ESP_LOG_BUFFER_HEX(TAG, rx_buffer, len);
+        //     }
 
-            vTaskDelay(10/portTICK_PERIOD_MS);
+        //     vTaskDelay(10/portTICK_PERIOD_MS);
+            
+        //     if(count > 2)
+        //     {
+        //         count = 0;
+        //         break;
+        //     }
+        // }
+
+        vTaskDelay(5000/portTICK_PERIOD_MS);
+
+        ret = mymqtt_unsubscribe("ESPTEST"); // Desinscreve do tópico
+        if (ret < 0)
+        {
+            ESP_LOGE(TAG, "MQTT unsubscribe failed, return: %d", ret);
+        }
+        else
+        {
+            ESP_LOGI(TAG, "MQTT unsubscribe success, return: %d", ret);
         }
 
         mymqtt_disconnect(); // Realiza o disconnect MQTT
-        vTaskDelay(5000/portTICK_PERIOD_MS);
     }
 
     vTaskDelete(NULL);
@@ -146,6 +169,6 @@ void app_main(void)
      */
     ESP_ERROR_CHECK(example_connect());
 
-    //xTaskCreate(mqtt_task1, "mqtt_task1", 4096, NULL, 5, NULL);
-    xTaskCreate(mqtt_task2, "mqtt_task2", 4096, NULL, 5, NULL);
+    //xTaskCreate(mqtt_pub_task, "mqtt_pub_task", 4096, NULL, 5, NULL);
+    xTaskCreate(mqtt_sub_task, "mqtt_sub_task", 4096, NULL, 5, NULL);
 }

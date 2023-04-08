@@ -91,6 +91,7 @@ int mymqtt_connect(char *host_ip, int port)
 
     /* Envio do pacote CONNECT */
     ESP_LOGI(TAG, "Connecting");
+    ESP_LOG_BUFFER_HEX(TAG, msgc, 19);
     ret = send(sock, msgc, 19, 0);
     if (ret < 0)
     {
@@ -112,27 +113,6 @@ int mymqtt_connect(char *host_ip, int port)
         ESP_LOG_BUFFER_HEX(TAG, rx_buffer, len);
         return ret;
     }
-}
-
-/**
- * @brief Encerra conexão com broker MQTT e fecha conexão TCP
- *
- */
-void mymqtt_disconnect(void)
-{
-    char msgc[2]; // Buffer de envio
-
-    msgc[0] = 0xE0; // CONTROL HEADER		E = Command Type (DISCONNECT) | 0 = Control Flags
-    msgc[1] = 0x00; // NO CONTENT
-
-    /* Envio do pacote DISCONNECT */
-    ESP_LOGI(TAG, "Disconnecting");
-    send(sock, msgc, 2, 0);
-
-    /* Encerramento do socket TCP */
-    ESP_LOGI(TAG, "Shutting down socket");
-    shutdown(sock, 0);
-    close(sock);
 }
 
 /**
@@ -330,3 +310,114 @@ int mymqtt_listen(char *rx_buffer, int buffer_size)
         return len;
     }
 }
+
+/**
+ * @brief Realiza a inscrição no tópico
+ *
+ * @param topic Nome do tópico
+ * @return int (-1: falha | 0 ou mais: bytes enviados com sucesso)
+ */
+int mymqtt_unsubscribe(char *topic)
+{
+    char payload[100];                // Buffer contendo Tamanho do tópico + Nome do tópico
+    char msgc[100];                   // Buffer de envio
+    char rx_buffer[100];                // Buffer de recebimento
+    uint32_t headlen = 0, paylen = 0; // Controle do comprimento da mensagem
+    int ret, len;
+
+    /* PAYLOAD: Topic name length */
+    payload[0] = (uint8_t)(strlen(topic) >> 8); // MSB
+    payload[1] = (uint8_t)(strlen(topic));      // LSB
+    paylen +=2;
+
+    /* PAYLOAD: Copia o nome do tópico para a mensagem */
+    strncpy(&payload[paylen], topic, strlen(topic));
+    paylen += strlen(topic);
+
+    /* CONTROL HEADER */
+    msgc[0] = 0XA2; // A = Command Type (UNSUBSCRIBE) | 2 = Control Flags
+    headlen++;
+
+    /* REMAINING LENGTH: Variable header + tamanho do payload */
+    if (paylen < 0x7F) // 1 byte
+    {
+        msgc[1] = 2 + paylen;
+        headlen++;
+    }
+    else if (paylen < 0x7FFF) // 2 bytes
+    {
+        msgc[1] = (uint8_t)((2 + paylen) >> 8);
+        msgc[2] = (uint8_t)(2 + paylen);
+        headlen += 2;
+    }
+    else if (paylen < 0x7FFFFF) // 3 bytes
+    {
+        msgc[1] = (uint8_t)((2 + paylen) >> 16);
+        msgc[2] = (uint8_t)((2 + paylen) >> 8);
+        msgc[3] = (uint8_t)(2 + paylen);
+        headlen += 3;
+    }
+    else // 4 bytes
+    {
+        msgc[1] = (uint8_t)((2 + paylen) >> 24);
+        msgc[2] = (uint8_t)((2 + paylen) >> 16);
+        msgc[3] = (uint8_t)((2 + paylen) >> 8);
+        msgc[4] = (uint8_t)(2 + paylen);
+        headlen += 4;
+    }
+
+    /* VARIABLE HEADER */
+    msgc[headlen + 0] = 0X00; // Packet ID MSB
+    msgc[headlen + 1] = 0X02; // Packet ID LSB
+    headlen += 2;
+
+    /* FULL MESSAGE */
+    memcpy(&msgc[headlen], payload, paylen);
+
+    /* Faz a inscrição */
+    ESP_LOGI(TAG, "Unsubscribing");
+    ESP_LOG_BUFFER_HEX(TAG, msgc, headlen + paylen);
+    ret = send(sock, msgc, headlen + paylen, 0);
+    if (ret < 0)
+    {
+        ESP_LOGE(TAG, "send failed: errno %d", errno);
+        return -1;
+    }
+
+    /* Recepção do UNSUBACK */
+    len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+    if (len < 0)
+    {
+        ESP_LOGE(TAG, "recv failed: errno %d", errno);
+        return -1;
+    }
+    else
+    {
+        rx_buffer[len] = 0; // Insere um NULL no fim do pacote
+        ESP_LOGI(TAG, "Received %d bytes", len);
+        ESP_LOG_BUFFER_HEX(TAG, rx_buffer, len);
+        return ret;
+    }
+}
+
+/**
+ * @brief Encerra conexão com broker MQTT e fecha conexão TCP
+ *
+ */
+void mymqtt_disconnect(void)
+{
+    char msgc[2]; // Buffer de envio
+
+    msgc[0] = 0xE0; // CONTROL HEADER		E = Command Type (DISCONNECT) | 0 = Control Flags
+    msgc[1] = 0x00; // NO CONTENT
+
+    /* Envio do pacote DISCONNECT */
+    ESP_LOGI(TAG, "Disconnecting");
+    send(sock, msgc, 2, 0);
+
+    /* Encerramento do socket TCP */
+    ESP_LOGI(TAG, "Shutting down socket");
+    shutdown(sock, 0);
+    close(sock);
+}
+

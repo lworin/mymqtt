@@ -20,8 +20,9 @@
 /* Protótipos */
 int mymqtt_connect(char *host_ip, int port);
 int mymqtt_publish(char *topic, void *data, uint32_t size);
-int mymqtt_subscribe(char * topic);
-int mymqtt_listen(char * rx_buffer, int buffer_size);
+int mymqtt_subscribe(char *topic);
+int mymqtt_listen(char *rx_buffer, int buffer_size);
+int mymqtt_unsubscribe(char *topic);
 void mymqtt_disconnect(void);
 
 #endif
