@@ -306,6 +306,13 @@ int mymqtt_subscribe(char *topic)
     }
 }
 
+/**
+ * @brief Recebe os dados do tópico assinado
+ * 
+ * @param rx_buffer Array para armazenar os dados
+ * @param buffer_size Tamanho do array
+ * @return int (-1: falha | 0 ou mais: bytes recebidos com sucesso)
+ */
 int mymqtt_listen(char *rx_buffer, int buffer_size)
 {
     int len;
